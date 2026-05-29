@@ -1,0 +1,38 @@
+Sentiment Analysis Project Requirements
+=======================================
+
+System requirements
+-------------------
+1. Python 3.10 or newer
+2. Node.js 18 or newer
+3. npm
+4. Internet connection for first-time model download
+
+Backend Python packages
+-----------------------
+Install these from the backend directory:
+
+    pip install -r requirements.txt
+
+The backend requirements are:
+
+    fastapi
+    uvicorn[standard]
+    transformers
+    torch
+    pydantic
+
+Frontend packages
+-----------------
+Install these from the frontend/clarity-sentiment-analyzer-main directory:
+
+    npm install
+
+The frontend dependencies are listed in:
+
+    frontend/clarity-sentiment-analyzer-main/package.json
+
+Important notes
+---------------
+Downloaded model files, node_modules, build output, and cache folders are not included in the clean project zip.
+They are generated or downloaded when you install dependencies and run the project.
