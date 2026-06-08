@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   AlertTriangle,
   CheckCircle2,
+  Database,
   FileSpreadsheet,
   FileText,
   Play,
@@ -35,18 +36,7 @@ interface DataInputProps {
   onConfirmAnalysis: (data: ParsedData) => void;
 }
 
-const demoData = [
-  "The healthcare system needs significant improvement in patient care quality.",
-  "Waiting times at the emergency department are extremely long and frustrating.",
-  "The staff was very professional and caring during my treatment.",
-  "Medical bills are too expensive and not transparent enough.",
-  "The new electronic health records system is much more efficient.",
-  "Communication between doctors and nurses could be better coordinated.",
-  "The hospital facilities are clean and well-maintained overall.",
-  "Appointment scheduling system is difficult to navigate and use.",
-  "The pharmacy staff provided excellent customer service and support.",
-  "More specialists are needed to reduce waiting times significantly.",
-];
+const DEMO_DATASET_PATH = "/comments_dataset.csv";
 
 const EmptyPreview = () => (
   <div className="flex min-h-[360px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/40 px-6 text-center">
@@ -75,6 +65,15 @@ const getCommentColumnScore = (header: string) => {
   return 0;
 };
 
+const getBestCommentColumn = (headers: string[]) => {
+  const commentColumns = headers
+    .map((header) => ({ header, score: getCommentColumnScore(header) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return commentColumns[0]?.header ?? "";
+};
+
 export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) => {
   const [activeTab, setActiveTab] = useState("paste");
   const [textInput, setTextInput] = useState("");
@@ -82,7 +81,6 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [selectedColumn, setSelectedColumn] = useState("");
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
-  const [useDemo, setUseDemo] = useState(false);
   const [treatAsSingleTokens, setTreatAsSingleTokens] = useState(false);
 
   const processTextInput = useCallback((text: string) => {
@@ -116,20 +114,32 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
     onDataParsed(data);
   };
 
+  const setCsvHeaderOptions = (headers: string[]) => {
+    setCsvHeaders(headers);
+    setSelectedColumn(getBestCommentColumn(headers));
+  };
+
+  const parseCsvRows = (rows: Record<string, unknown>[], column: string) => {
+    const comments = rows
+      .map((row) => row[column])
+      .filter((comment): comment is string => typeof comment === "string" && comment.trim().length > 0)
+      .map((comment) => comment.trim());
+
+    if (comments.length === 0) {
+      throw new Error("No valid comments found in selected column");
+    }
+
+    return processTextInput(comments.join("\n"));
+  };
+
   const handleTextParse = () => {
     try {
-      const inputText = useDemo ? demoData.join("\n") : textInput;
-
-      if (useDemo) {
-        setTextInput(inputText);
-      }
-
-      if (!inputText.trim()) {
+      if (!textInput.trim()) {
         toast.error("Please enter text to analyze");
         return;
       }
 
-      const parsed = processTextInput(inputText);
+      const parsed = processTextInput(textInput);
       setParsed(parsed);
       toast.success(`Parsed ${parsed.rawCount} comments`);
     } catch (error) {
@@ -156,16 +166,7 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
       complete: (results) => {
         const firstRow = results.data[0] as Record<string, unknown> | undefined;
         const headers = firstRow ? Object.keys(firstRow) : [];
-        setCsvHeaders(headers);
-
-        const commentColumns = headers
-          .map((header) => ({ header, score: getCommentColumnScore(header) }))
-          .filter((item) => item.score > 0)
-          .sort((a, b) => b.score - a.score);
-
-        if (commentColumns.length > 0) {
-          setSelectedColumn(commentColumns[0].header);
-        }
+        setCsvHeaderOptions(headers);
 
         toast.success(`CSV uploaded with ${headers.length} columns detected`);
       },
@@ -173,6 +174,51 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
         toast.error(`Failed to parse CSV: ${error.message}`);
       },
     });
+  };
+
+  const handleDemoDatasetLoad = async () => {
+    try {
+      const response = await fetch(DEMO_DATASET_PATH);
+
+      if (!response.ok) {
+        throw new Error("Demo dataset could not be loaded");
+      }
+
+      const csvText = await response.text();
+
+      Papa.parse<Record<string, unknown>>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          try {
+            const firstRow = results.data[0];
+            const headers = firstRow ? Object.keys(firstRow) : [];
+            const commentColumn = getBestCommentColumn(headers);
+
+            if (!commentColumn) {
+              throw new Error("No comment column found in demo dataset");
+            }
+
+            const demoFile = new File([csvText], "comments_dataset.csv", { type: "text/csv" });
+            const parsed = parseCsvRows(results.data, commentColumn);
+
+            setActiveTab("csv");
+            setCsvFile(demoFile);
+            setCsvHeaders(headers);
+            setSelectedColumn(commentColumn);
+            setParsed(parsed);
+            toast.success(`Loaded demo dataset with ${parsed.rawCount} comments`);
+          } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to parse demo dataset");
+          }
+        },
+        error: (error: Error) => {
+          toast.error(`Failed to parse demo dataset: ${error.message}`);
+        },
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load demo dataset");
+    }
   };
 
   const handleCsvParse = () => {
@@ -183,18 +229,10 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
 
     Papa.parse(csvFile, {
       header: true,
+      skipEmptyLines: true,
       complete: (results) => {
         try {
-          const comments = results.data
-            .map((row: any) => row[selectedColumn])
-            .filter((comment: string) => comment && comment.trim().length > 0)
-            .map((comment: string) => comment.trim());
-
-          if (comments.length === 0) {
-            throw new Error("No valid comments found in selected column");
-          }
-
-          const parsed = processTextInput(comments.join("\n"));
+          const parsed = parseCsvRows(results.data as Record<string, unknown>[], selectedColumn);
           setParsed(parsed);
           toast.success(`Parsed ${parsed.rawCount} comments from CSV`);
         } catch (error) {
@@ -232,20 +270,10 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
       <Card className="panel-card">
         <CardHeader className="border-b border-border">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <CardTitle className="text-xl">Prepare Dataset</CardTitle>
-              <CardDescription className="mt-1">
-                Add comments one per line, or select a CSV column that contains feedback text.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-              <Switch id="demo-mode" checked={useDemo} onCheckedChange={setUseDemo} />
-              <Label htmlFor="demo-mode" className="text-sm">
-                Demo data
-              </Label>
-            </div>
-          </div>
+          <CardTitle className="text-xl">Prepare Dataset</CardTitle>
+          <CardDescription className="mt-1">
+            Add comments one per line, or select a CSV column that contains feedback text.
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="p-5">
@@ -296,8 +324,19 @@ export const DataInput = ({ onDataParsed, onConfirmAnalysis }: DataInputProps) =
                       Upload a CSV and choose the column that contains the comments.
                     </p>
                   </div>
-                  <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="max-w-sm" />
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileUpload} className="max-w-sm" />
+                    <Button type="button" variant="outline" onClick={handleDemoDatasetLoad} className="gap-2">
+                      <Database className="h-4 w-4" />
+                      Load Demo Dataset
+                    </Button>
+                  </div>
                 </div>
+                {csvFile && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Selected: <span className="font-medium text-foreground">{csvFile.name}</span>
+                  </p>
+                )}
               </div>
 
               {csvHeaders.length > 0 && (
