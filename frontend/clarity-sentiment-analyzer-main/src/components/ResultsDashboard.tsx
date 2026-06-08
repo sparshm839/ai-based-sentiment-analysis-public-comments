@@ -151,12 +151,54 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const WORD_CLOUD_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "also",
+  "another",
+  "because",
+  "been",
+  "before",
+  "both",
+  "during",
+  "each",
+  "enough",
+  "from",
+  "have",
+  "like",
+  "more",
+  "most",
+  "much",
+  "only",
+  "over",
+  "same",
+  "some",
+  "still",
+  "than",
+  "that",
+  "them",
+  "there",
+  "these",
+  "they",
+  "this",
+  "those",
+  "while",
+  "with",
+  "without",
+  "would",
+]);
+
 const buildWordCloudData = (source: SentimentResult[]) => {
   const wordFreq: Record<string, number> = {};
+  const addWord = (rawWord: string, weight = 1) => {
+    const word = rawWord.toLowerCase().trim();
+    if (word.length <= 2 || WORD_CLOUD_STOP_WORDS.has(word) || /^\d+$/.test(word)) return;
+    wordFreq[word] = (wordFreq[word] || 0) + weight;
+  };
 
   source.forEach((result) => {
     result.keywords.forEach((keyword) => {
-      wordFreq[keyword] = (wordFreq[keyword] || 0) + 2;
+      addWord(keyword, 2);
     });
 
     result.comment
@@ -165,7 +207,7 @@ const buildWordCloudData = (source: SentimentResult[]) => {
       .split(/\s+/)
       .filter((word) => word.length > 3)
       .forEach((word) => {
-        wordFreq[word] = (wordFreq[word] || 0) + 1;
+        addWord(word);
       });
   });
 
@@ -1114,13 +1156,13 @@ export const ResultsDashboard = ({ results, onNewAnalysis }: Props) => {
                   key={word.text}
                   variant="outline"
                   size="sm"
-                  className={`h-7 gap-1.5 rounded-full bg-card px-2 text-xs ${index < 5 ? "border-primary/25 text-primary" : "text-muted-foreground"}`}
+                  className="h-7 gap-1.5 rounded-full border-sky-200 bg-sky-50/60 px-2 text-xs text-sky-800 hover:border-sky-300 hover:bg-sky-100"
                   title={`${word.text}: importance ${word.size}`}
                   onClick={() => openKeywordDrilldown(word.text, wordCloudSource)}
                 >
                   <span className="font-mono text-[10px] opacity-70">#{index + 1}</span>
                   {word.text}
-                  <span className="rounded bg-muted px-1 font-mono text-[10px]">{word.size}</span>
+                  <span className="rounded bg-sky-100 px-1 font-mono text-[10px] text-sky-700">{word.size}</span>
                 </Button>
               ))}
               {!showAllWordCloudTerms && wordCloudData.length > 12 && (
@@ -1138,7 +1180,7 @@ export const ResultsDashboard = ({ results, onNewAnalysis }: Props) => {
           </div>
           <WordCloudComponent
             words={wordCloudData}
-            height={320}
+            height={460}
             onRenderStats={handleWordCloudStats}
             onWordClick={(word) => openKeywordDrilldown(word, wordCloudSource)}
           />

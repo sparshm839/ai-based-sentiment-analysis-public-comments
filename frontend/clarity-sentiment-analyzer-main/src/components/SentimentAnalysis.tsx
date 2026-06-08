@@ -3,9 +3,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Brain, CheckCircle2, Clock, Cpu, Globe, Play, Shield, Zap } from "lucide-react";
+import {
+  Activity,
+  Brain,
+  CheckCircle2,
+  Clock,
+  Cloud,
+  Cpu,
+  Globe,
+  Layers,
+  Network,
+  Play,
+  Rocket,
+  Server,
+  Shield,
+  Users,
+  XCircle,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface SentimentResult {
@@ -268,7 +286,29 @@ const modelOptions = [
     icon: Globe,
     speed: "Fast",
     privacy: "External",
+    status: "Coming soon",
   },
+];
+
+const futureCloudFeatures = [
+  { label: "Integration with cloud-based Large Language Models", icon: Cloud },
+  { label: "Remote AI inference and processing", icon: Server },
+  { label: "Scalable cloud deployment", icon: Network },
+  { label: "Multi-user request handling", icon: Users },
+  { label: "Enhanced model performance", icon: Zap },
+  { label: "Real-time API-based sentiment analysis", icon: Activity },
+];
+
+const currentVersionStatus = [
+  { label: "Pattern Matching", icon: CheckCircle2, available: true },
+  { label: "Local Transformer (FastAPI)", icon: CheckCircle2, available: true },
+  { label: "Cloud API (Under Development)", icon: XCircle, available: false },
+];
+
+const roadmapPhases = [
+  { phase: "Phase 1", label: "Pattern Matching", status: "Completed", icon: CheckCircle2 },
+  { phase: "Phase 2", label: "Local Transformer", status: "Completed", icon: Cpu },
+  { phase: "Phase 3", label: "Cloud API Integration", status: "Coming Soon", icon: Layers },
 ];
 
 export const SentimentAnalysis = ({ comments, onAnalysisComplete }: SentimentAnalysisProps) => {
@@ -276,6 +316,7 @@ export const SentimentAnalysis = ({ comments, onAnalysisComplete }: SentimentAna
   const [progress, setProgress] = useState(0);
   const [selectedModel, setSelectedModel] = useState("pattern-local");
   const [currentStep, setCurrentStep] = useState("Ready");
+  const [cloudDialogOpen, setCloudDialogOpen] = useState(false);
 
   const uniqueComments = [...new Set(comments)];
   const selectedModelInfo = modelOptions.find((model) => model.id === selectedModel);
@@ -384,13 +425,29 @@ export const SentimentAnalysis = ({ comments, onAnalysisComplete }: SentimentAna
                   <button
                     key={model.id}
                     type="button"
-                    className={`model-option ${active ? "is-selected" : ""}`}
-                    onClick={() => setSelectedModel(model.id)}
+                    className={`model-option ${active ? "is-selected" : ""} ${
+                      model.id === "cloud-api" ? "is-coming-soon" : ""
+                    }`}
+                    onClick={() => {
+                      if (model.id === "cloud-api") {
+                        setCloudDialogOpen(true);
+                        return;
+                      }
+
+                      setSelectedModel(model.id);
+                    }}
                     disabled={isAnalyzing}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <Icon className="h-5 w-5" />
-                      {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      <div className="flex items-center gap-2">
+                        {model.status && (
+                          <span className="coming-soon-pill">
+                            {model.status}
+                          </span>
+                        )}
+                        {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      </div>
                     </div>
                     <div className="mt-4 text-left">
                       <h3>{model.name}</h3>
@@ -498,6 +555,122 @@ export const SentimentAnalysis = ({ comments, onAnalysisComplete }: SentimentAna
           </CardContent>
         </Card>
       </aside>
+
+      <Dialog open={cloudDialogOpen} onOpenChange={setCloudDialogOpen}>
+        <DialogContent className="cloud-api-dialog max-h-[92vh] overflow-y-auto border-0 p-0 text-white shadow-2xl sm:max-w-5xl">
+          <div className="cloud-api-shell">
+            <div className="cloud-api-grid" />
+
+            <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_310px]">
+              <DialogHeader className="cloud-api-hero text-left">
+                <Badge className="coming-soon-badge">
+                <Rocket className="mr-1.5 h-3 w-3" />
+                Coming Soon
+              </Badge>
+                <div className="space-y-2">
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-semibold text-white sm:text-3xl">
+                    🌐 Cloud API Integration
+                </DialogTitle>
+                  <DialogDescription className="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-100/80">
+                    Future Enhancement
+                </DialogDescription>
+              </div>
+                <p className="max-w-2xl text-sm leading-6 text-white/90 sm:text-base">
+                Cloud API integration is currently under development and is not available in the current version of the project.
+              </p>
+            </DialogHeader>
+
+              <div className="cloud-api-illustration" aria-hidden="true">
+                <div className="cloud-api-icon">
+                  <Cloud className="h-16 w-16" />
+                </div>
+                <div className="cloud-api-node node-top">
+                  <Server className="h-4 w-4" />
+                </div>
+                <div className="cloud-api-node node-right">
+                  <Activity className="h-4 w-4" />
+                </div>
+                <div className="cloud-api-node node-bottom">
+                  <Network className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            <div className="relative mt-6 grid gap-4">
+              <section className="cloud-glass-card cloud-api-section">
+                <div>
+                  <h3>Future releases will support</h3>
+                  <p>Planned cloud intelligence for production-scale sentiment workflows.</p>
+                </div>
+                <div className="cloud-feature-grid">
+                  {futureCloudFeatures.map((feature, index) => {
+                    const FeatureIcon = feature.icon;
+
+                    return (
+                      <div
+                        key={feature.label}
+                        className="cloud-feature-item"
+                        style={{ animationDelay: `${index * 70}ms` }}
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-emerald-200" />
+                        <FeatureIcon className="h-4 w-4 text-cyan-100" />
+                        <span>{feature.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <div className="grid gap-4 sm:grid-cols-[1fr_1.25fr]">
+                <section className="cloud-glass-card cloud-api-section">
+                  <h3 className="font-semibold text-white">Current Version</h3>
+                  <div className="mt-4 grid gap-2">
+                    {currentVersionStatus.map((item) => {
+                      const StatusIcon = item.icon;
+
+                      return (
+                        <div key={item.label} className="cloud-status-row">
+                          <StatusIcon className={`h-4 w-4 ${item.available ? "text-emerald-200" : "text-rose-200"}`} />
+                          <span>{item.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="cloud-glass-card cloud-api-section">
+                  <h3 className="font-semibold text-white">Roadmap</h3>
+                  <div className="cloud-roadmap">
+                    {roadmapPhases.map((item) => {
+                      const ItemIcon = item.icon;
+                      const future = item.status === "Coming Soon";
+
+                      return (
+                        <div key={item.phase} className={`cloud-roadmap-card ${future ? "is-future" : ""}`}>
+                          <div className="cloud-roadmap-icon">
+                            <ItemIcon className="h-4 w-4" />
+                          </div>
+                          <p className="cloud-roadmap-phase">{item.phase}</p>
+                          <p className="cloud-roadmap-label">{item.label}</p>
+                          <p className="cloud-roadmap-status">{item.status}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+
+              <Button
+                type="button"
+                className="cloud-api-cta"
+                onClick={() => setCloudDialogOpen(false)}
+              >
+                Coming in Future Release 🚀
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
